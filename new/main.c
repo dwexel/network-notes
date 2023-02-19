@@ -11,20 +11,62 @@
 #define PORT "8888"
 #define DEFAULT_BUFLEN 512
 
-#define filename "index.html"
+// http response length
+#define RESPONSE_LEN 8000
 
-// int err();
 
-// print to standard error
+// #define filename "index.html"
 
-void setHttpHeader(char httpHeader[]);
-void report(struct sockaddr *serverAddress);
+void clrstr(char string[], int size)
+{
+	int i;
+	for (i = 0; i < size; i++) { string[i] = (char)0; }
+}
+
+void catfile(char* destination, char *filename)
+{
+	FILE *f = fopen(filename, "r");
+	char line[100];
+
+	// should check to make sure it doesn't go over length 8000
+	// should be 8000 minus length of the header
+	// char responseData[8000];
+	while (fgets(line, 100, f) != 0) 
+	{
+		// strcat(responseData, line);
+		strcat(destination, line);
+	}
+	// strcat(destination, responseData);
+}
+
+void report(struct sockaddr *serverAddress)
+{
+   char hostBuffer[INET6_ADDRSTRLEN];
+   char serviceBuffer[NI_MAXSERV];
+
+	int err = getnameinfo(
+		serverAddress, (socklen_t)sizeof(*serverAddress),
+		hostBuffer,    sizeof(hostBuffer), 
+		serviceBuffer, sizeof(serviceBuffer),
+		NI_NUMERICHOST
+	);
+
+	if (err != 0)
+   	{
+		printf("It's not working!!\n");
+	}
+	else
+	{
+		printf("\n\nServer listening on http://%s:%s\n\n", hostBuffer, serviceBuffer);
+	}
+}
 
 int main(int argc , char *argv[])
 {
 	WSADATA wsa;
+	int iResult;
 
-	int iResult = WSAStartup(MAKEWORD(2,2), &wsa);
+	iResult = WSAStartup(MAKEWORD(2,2), &wsa);
 	if (iResult != 0) 
 	{
 		printf("WSAStartup failed: %d\n", iResult);
@@ -42,7 +84,8 @@ int main(int argc , char *argv[])
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
 
-	if (getaddrinfo(NULL, PORT, &hints, &result) != 0)
+	iResult = getaddrinfo(NULL, PORT, &hints, &result);
+	if (iResult != 0)
 	{
 		printf("getaddrinfo failed: %d\n", iResult);
 		WSACleanup();
@@ -60,14 +103,14 @@ int main(int argc , char *argv[])
 	}
 	
 	// Setup the TCP listening socket
-   if (bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen) == SOCKET_ERROR)
+	if (bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen) == SOCKET_ERROR)
 	{
-        printf("bind failed with error: %d\n", WSAGetLastError());
-        freeaddrinfo(result);
-        closesocket(ListenSocket);
-        WSACleanup();
-        return 1;
-   }
+		printf("bind failed with error: %d\n", WSAGetLastError());
+		freeaddrinfo(result);
+		closesocket(ListenSocket);
+		WSACleanup();
+		return 1;
+	}
 
 	freeaddrinfo(result);
 
@@ -79,17 +122,20 @@ int main(int argc , char *argv[])
 		WSACleanup();
 		return 1;
 	}
+	
+	report(result->ai_addr);
 
-	char httpHeader[8000] = "HTTP/1.1 200 OK\r\n\n";
-	setHttpHeader(httpHeader);
+	char httpResponse[8000];
 
 	SOCKET ClientSocket = INVALID_SOCKET;
 
 	char recvbuf[DEFAULT_BUFLEN];
 	int sendResult;
 	int recvResult;
-	
 
+	char *pch;
+	char *header;
+	
 	while (1)
 	{
 		if ((ClientSocket = accept(ListenSocket, NULL, NULL)) != INVALID_SOCKET) 
@@ -100,8 +146,20 @@ int main(int argc , char *argv[])
 			if (recvResult > 0)
 			{
 				// recieved request
-				printf("Bytes received = %d\n", recvResult);
-				sendResult = send(ClientSocket, httpHeader, sizeof(httpHeader), 0);
+
+				// printf("Bytes received = %d\n", recvResult);
+
+				// char *pch;
+				pch = strtok(recvbuf, "\n");
+				printf("first line = \n%s\n", pch);
+
+				// char *header;
+				header = "HTTP/1.1 200 OK\r\n\n";
+				clrstr(httpResponse, 8000);
+				strcat(httpResponse, header);
+				catfile(httpResponse, "index.html");
+
+				sendResult = send(ClientSocket, httpResponse, strlen(httpResponse), 0);
 
 				if (sendResult != SOCKET_ERROR)
 				{
@@ -141,6 +199,8 @@ int main(int argc , char *argv[])
 		}
 	}
 
+	// free(httpResponse);
+
 	// shutdown the send half of the connection since no more data will be sent
 	if ((shutdown(ClientSocket, SD_SEND)) == SOCKET_ERROR) 
 	{
@@ -153,40 +213,5 @@ int main(int argc , char *argv[])
 	closesocket(ClientSocket);
 	WSACleanup();
 	return 0;
-}
-
-void setHttpHeader(char httpHeader[])
-{
-	FILE *htmlData = fopen(filename, "r");
-
-	char line[100];
-	char responseData[8000];
-	while (fgets(line, 100, htmlData) != 0) 
-	{
-		strcat(responseData, line);
-	}
-	strcat(httpHeader, responseData);
-}
-
-void report(struct sockaddr *serverAddress)
-{
-   char hostBuffer[INET6_ADDRSTRLEN];
-   char serviceBuffer[NI_MAXSERV];
-
-	int err = getnameinfo(
-		serverAddress, (socklen_t)sizeof(*serverAddress),
-		hostBuffer,    sizeof(hostBuffer), 
-		serviceBuffer, sizeof(serviceBuffer),
-		NI_NUMERICHOST
-	);
-
-   if (err != 0) 
-	{
-   	printf("It's not working!!\n");
-   } 
-	else 
-	{
-		printf("\n\nServer listening on http://%s:%s\n\n", hostBuffer, serviceBuffer);
-	}
 }
 

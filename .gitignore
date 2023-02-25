@@ -1,4 +1,5 @@
 *.o
 *.exe
 
-.vscode/
+/.vscode/
+/pcre2-10.42/

@@ -8,6 +8,7 @@
 #include<ws2tcpip.h>
 #include<winsock2.h>
 
+
 #define PORT "8888"
 #define DEFAULT_BUFLEN 512
 
@@ -15,7 +16,6 @@
 #define RESPONSE_LEN 8000
 
 
-// #define filename "index.html"
 
 void clrstr(char string[], int size)
 {
@@ -29,9 +29,8 @@ void catfile(char* destination, char *filename)
 	char line[100];
 
 	// should check to make sure it doesn't go over length 8000
-	// should be 8000 minus length of the header
 	// char responseData[8000];
-	while (fgets(line, 100, f) != 0) 
+	while (fgets(line, 100, f))
 	{
 		// strcat(responseData, line);
 		strcat(destination, line);
@@ -61,13 +60,27 @@ void report(struct sockaddr *serverAddress)
 	}
 }
 
+void parse(char* header)
+{
+	char* h = header;
+
+	do {
+		printf("%c\n", *h);
+		h++;
+	} while (*h != '/');
+	
+	printf("here\n%s\n", header);
+
+}
+
+
 int main(int argc , char *argv[])
 {
 	WSADATA wsa;
 	int iResult;
 
 	iResult = WSAStartup(MAKEWORD(2,2), &wsa);
-	if (iResult != 0) 
+	if (iResult) 
 	{
 		printf("WSAStartup failed: %d\n", iResult);
 		return 1;
@@ -91,7 +104,7 @@ int main(int argc , char *argv[])
 		WSACleanup();
 		return 1;
 	}
-		
+	
 	// Create a SOCKET for the server to listen for client connections
 	SOCKET ListenSocket = INVALID_SOCKET;
 	if ((ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol)) == INVALID_SOCKET)
@@ -124,11 +137,9 @@ int main(int argc , char *argv[])
 	}
 	
 	report(result->ai_addr);
-
-	char httpResponse[8000];
-
 	SOCKET ClientSocket = INVALID_SOCKET;
 
+	char httpResponse[RESPONSE_LEN];
 	char recvbuf[DEFAULT_BUFLEN];
 	int sendResult;
 	int recvResult;
@@ -146,16 +157,16 @@ int main(int argc , char *argv[])
 			if (recvResult > 0)
 			{
 				// recieved request
-
 				// printf("Bytes received = %d\n", recvResult);
 
-				// char *pch;
 				pch = strtok(recvbuf, "\n");
+
+				parse(pch);
+
 				printf("first line = \n%s\n", pch);
 
-				// char *header;
 				header = "HTTP/1.1 200 OK\r\n\n";
-				clrstr(httpResponse, 8000);
+				clrstr(httpResponse, RESPONSE_LEN);
 				strcat(httpResponse, header);
 				catfile(httpResponse, "index.html");
 

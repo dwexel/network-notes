@@ -1,45 +1,35 @@
 /*
 	Live Server on port 8888
 */
+
 #include<io.h>
 #include<stdio.h>
 #include<conio.h>
+#include<string.h>
 
 #include<ws2tcpip.h>
 #include<winsock2.h>
 
-
 #define PORT "8888"
-#define DEFAULT_BUFLEN 512
+#define DEFAULT_BUFLEN 8000
 
 // http response length
 #define RESPONSE_LEN 8000
 
 
+// enum response_types {
+// 	html, js
+// };
 
-void clrstr(char string[], int size)
-{
-	int i;
-	for (i = 0; i < size; i++) { string[i] = (char)0; }
+
+int filesize(FILE *f) {
+	fseek(f, 0, SEEK_END);
+	int size = ftell(f);
+	rewind(f);
+	return size;
 }
 
-void catfile(char* destination, char *filename)
-{
-	FILE *f = fopen(filename, "r");
-	char line[100];
-
-	// should check to make sure it doesn't go over length 8000
-	// char responseData[8000];
-	while (fgets(line, 100, f))
-	{
-		// strcat(responseData, line);
-		strcat(destination, line);
-	}
-	// strcat(destination, responseData);
-}
-
-void report(struct sockaddr *serverAddress)
-{
+void report(struct sockaddr *serverAddress) {
    char hostBuffer[INET6_ADDRSTRLEN];
    char serviceBuffer[NI_MAXSERV];
 
@@ -50,38 +40,20 @@ void report(struct sockaddr *serverAddress)
 		NI_NUMERICHOST
 	);
 
-	if (err != 0)
-   	{
+	if (err != 0) {
 		printf("It's not working!!\n");
-	}
-	else
-	{
-		printf("\n\nServer listening on http://%s:%s\n\n", hostBuffer, serviceBuffer);
+	} 
+	else	{
+		printf("\nServer listening on http://%s:%s\n", hostBuffer, serviceBuffer);
 	}
 }
 
-void parse(char* header)
-{
-	char* h = header;
-
-	do {
-		printf("%c\n", *h);
-		h++;
-	} while (*h != '/');
-	
-	printf("here\n%s\n", header);
-
-}
-
-
-int main(int argc , char *argv[])
-{
+int main(int argc , char *argv[]) {
 	WSADATA wsa;
 	int iResult;
 
 	iResult = WSAStartup(MAKEWORD(2,2), &wsa);
-	if (iResult) 
-	{
+	if (iResult) {
 		printf("WSAStartup failed: %d\n", iResult);
 		return 1;
 	}
@@ -98,8 +70,7 @@ int main(int argc , char *argv[])
 	hints.ai_flags = AI_PASSIVE;
 
 	iResult = getaddrinfo(NULL, PORT, &hints, &result);
-	if (iResult != 0)
-	{
+	if (iResult != 0) {
 		printf("getaddrinfo failed: %d\n", iResult);
 		WSACleanup();
 		return 1;
@@ -107,8 +78,7 @@ int main(int argc , char *argv[])
 	
 	// Create a SOCKET for the server to listen for client connections
 	SOCKET ListenSocket = INVALID_SOCKET;
-	if ((ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol)) == INVALID_SOCKET)
-	{
+	if ((ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol)) == INVALID_SOCKET) {
 		printf("Error at socket(): %d\n", WSAGetLastError());
 		freeaddrinfo(result);
 		WSACleanup();
@@ -116,8 +86,7 @@ int main(int argc , char *argv[])
 	}
 	
 	// Setup the TCP listening socket
-	if (bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen) == SOCKET_ERROR)
-	{
+	if (bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen) == SOCKET_ERROR) {
 		printf("bind failed with error: %d\n", WSAGetLastError());
 		freeaddrinfo(result);
 		closesocket(ListenSocket);
@@ -128,8 +97,7 @@ int main(int argc , char *argv[])
 	freeaddrinfo(result);
 
 	// listen for incoming connections
-	if (listen(ListenSocket, SOMAXCONN) == SOCKET_ERROR) 
-	{
+	if (listen(ListenSocket, SOMAXCONN) == SOCKET_ERROR) {
 		printf("Listen failed with error: %d\n", WSAGetLastError());
 		closesocket(ListenSocket);
 		WSACleanup();
@@ -143,58 +111,110 @@ int main(int argc , char *argv[])
 	char recvbuf[DEFAULT_BUFLEN];
 	int sendResult;
 	int recvResult;
+	// char *pch;
 
-	char *pch;
-	char *header;
-	
-	while (1)
-	{
-		if ((ClientSocket = accept(ListenSocket, NULL, NULL)) != INVALID_SOCKET) 
-		{
-			// accepted socket
+
+
+	while (1){
+		if ((ClientSocket = accept(ListenSocket, NULL, NULL)) != INVALID_SOCKET) {
+
 			recvResult = recv(ClientSocket, recvbuf, DEFAULT_BUFLEN, 0);
 
-			if (recvResult > 0)
-			{
+			if (recvResult > 0) {
 				// recieved request
-				// printf("Bytes received = %d\n", recvResult);
+				printf("------------request:\n%s\n", recvbuf);
+				// printf("------------bytes received: %d\n", recvResult);
+				
+				char *uri;
+				char path[50];
+				char *ext;
 
-				pch = strtok(recvbuf, "\n");
+				uri = strtok(recvbuf, "\n");
+				uri = strtok(uri, " ");
+				uri = strtok(NULL, " ");
 
-				parse(pch);
+				if (!strcmp(uri, "/")) {
+					strcpy(path, "index.html");
+				}
 
-				printf("first line = \n%s\n", pch);
+				else if(uri[0] == '/') {
+					path[0] = '.';
+					path[1] = '\0';
+					strcat(path, uri);
+				}
 
-				header = "HTTP/1.1 200 OK\r\n\n";
-				clrstr(httpResponse, RESPONSE_LEN);
-				strcat(httpResponse, header);
-				catfile(httpResponse, "index.html");
+				ext = strrchr(path, '.');
+
+				printf("--------%s\n", path);
+				printf("--------%s\n", ext);
+
+				FILE *f = fopen(path, "r");
+				memset(httpResponse, (char)0, RESPONSE_LEN);
+
+				if (f) {
+					// server could find file
+
+					// enum response_types ftype;
+					char *type;
+					char *target;
+					
+					target = httpResponse;
+					target += sprintf(target, "%s", "HTTP/1.1 200 OK\r\n");
+
+					if (!strcmp(ext, ".html")) {
+						type = "text/html";
+					}
+					else if (!strcmp(ext, ".js")) {
+						type = "text/javascript";
+					}
+
+					target += sprintf(target, "Content-Type: %s\r\n", type);
+					target += sprintf(target, "Content-Security-Policy: %s\r\n\r\n", "script-src 'self'");
+
+					// target += sprintf(target, "Content-Length: %i\r\n\r\n", filesize(f));
+
+					char line[100];
+					while (fgets(line, 100, f)) {
+						strcat(httpResponse, line);
+					}
+					fclose(f);
+	
+				}
+				else {
+					// file not found
+					strcat(httpResponse, "HTTP/1.1 404 Not Found\r\n");
+					strcat(httpResponse, "Content-Type: text/plain\r\n\r\n");
+					
+					strcat(httpResponse, "404 not found\r\nfile:");
+					strcat(httpResponse, path);	
+				}
+		
+				printf("------------response:\n");
+				printf("%s\n", httpResponse);
 
 				sendResult = send(ClientSocket, httpResponse, strlen(httpResponse), 0);
 
-				if (sendResult != SOCKET_ERROR)
-				{
-					// send response
-					printf("Bytes sent = %d\n", sendResult);
+				if (sendResult != SOCKET_ERROR) {
+					// sent response successfully
+					printf("------bytes sent: %d\n", sendResult);
 					closesocket(ClientSocket);
 				}
-				else
-				{
+				else {
 					// error: failed response
-					printf("send failed: %d\n", WSAGetLastError());
+					printf("error: send failed: %d\n", WSAGetLastError());
 					closesocket(ClientSocket);
 					WSACleanup();
 					return 1;				
 				}
 			}
-			else if (recvResult == 0)
-			{
-				printf("Connection closing...\n");
+			else if (recvResult == 0) {
+				// socket closed by client
+				printf("connection closing...\n");
+				closesocket(ClientSocket);
 			}
-			else
-			{
+			else {
 				// error: failed receive
-				printf("recv failed: %d\n", WSAGetLastError());
+				printf("error: receive failed: %d\n", WSAGetLastError());
 				closesocket(ClientSocket);
 				WSACleanup();
 				return 1;
@@ -203,26 +223,24 @@ int main(int argc , char *argv[])
 		else
 		{
 			// error: rejected socket
-			printf("accept failed: %d\n", WSAGetLastError());
+			printf("error: accept failed: %d\n", WSAGetLastError());
 			closesocket(ListenSocket);
 			WSACleanup();
 			return 1;
 		}
 	}
 
-	// free(httpResponse);
-
+	// wait, this will never be reached.
 	// shutdown the send half of the connection since no more data will be sent
-	if ((shutdown(ClientSocket, SD_SEND)) == SOCKET_ERROR) 
-	{
-		printf("shutdown failed: %d\n", WSAGetLastError());
-		closesocket(ClientSocket);
-		WSACleanup();
-		return 1;
-	}
-
-	closesocket(ClientSocket);
-	WSACleanup();
-	return 0;
+	// if ((shutdown(ClientSocket, SD_SEND)) == SOCKET_ERROR) 
+	// {
+	// 	printf("shutdown failed: %d\n", WSAGetLastError());
+	// 	closesocket(ClientSocket);
+	// 	WSACleanup();
+	// 	return 1;
+	// }
+	// closesocket(ClientSocket);
+	// WSACleanup();
+	// return 0;
 }
 

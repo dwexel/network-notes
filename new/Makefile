@@ -2,11 +2,17 @@
 LDFLAGS = -lws2_32
 CFLAGS = -Wall
 
-all: build/program
+all: build/server
 
-build/program: obj/main.o
+build/server: obj/main.o
 	gcc $^ -o $@ ${LDFLAGS}
 
 obj/%.o: %.c
 	gcc -c $< -o $@ ${CFLAGS}
+
+run: all
+	build/server
+
+copy: all
+	cp build/server /c/path
 

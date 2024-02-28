@@ -86,7 +86,7 @@ int main(int argc , char *argv[]) {
 		return 1;
 	}
 	
-	// Setup the TCP listening socket
+	// Setup the TCP listening socket (bind it to the address we want)
 	if (bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen) == SOCKET_ERROR) {
 		printf("bind failed with error: %d\n", WSAGetLastError());
 		freeaddrinfo(result);

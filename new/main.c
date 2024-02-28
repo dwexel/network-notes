@@ -69,6 +69,7 @@ int main(int argc , char *argv[]) {
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
 
+	// get address info for 0.0.0.0:8888
 	iResult = getaddrinfo(NULL, PORT, &hints, &result);
 	if (iResult != 0) {
 		printf("getaddrinfo failed: %d\n", iResult);
@@ -94,6 +95,7 @@ int main(int argc , char *argv[]) {
 		return 1;
 	}
 
+	// im not sure why but it was in the tutorial
 	freeaddrinfo(result);
 
 	// listen for incoming connections
@@ -107,13 +109,11 @@ int main(int argc , char *argv[]) {
 	report(result->ai_addr);
 	SOCKET ClientSocket = INVALID_SOCKET;
 
+	// setup responses
 	char httpResponse[RESPONSE_LEN];
 	char recvbuf[DEFAULT_BUFLEN];
 	int sendResult;
 	int recvResult;
-	// char *pch;
-
-
 
 	while (1){
 		if ((ClientSocket = accept(ListenSocket, NULL, NULL)) != INVALID_SOCKET) {
@@ -121,9 +121,9 @@ int main(int argc , char *argv[]) {
 			recvResult = recv(ClientSocket, recvbuf, DEFAULT_BUFLEN, 0);
 
 			if (recvResult > 0) {
+
 				// recieved request
 				printf("------------request:\n%s\n", recvbuf);
-				// printf("------------bytes received: %d\n", recvResult);
 				
 				char *uri;
 				char path[50];
@@ -133,45 +133,39 @@ int main(int argc , char *argv[]) {
 				uri = strtok(uri, " ");
 				uri = strtok(NULL, " ");
 
+				// if the request is asking for the root, get ready to return "index.html"
 				if (!strcmp(uri, "/")) {
 					strcpy(path, "index.html");
 				}
 
+				// if the request is for a different file, get ready to return whatever it is
 				else if(uri[0] == '/') {
 					path[0] = '.';
 					path[1] = '\0';
 					strcat(path, uri);
 				}
 
+				// get the file extension of the requested file
+				// this isn't really used atm
 				ext = strrchr(path, '.');
 
-				printf("--------%s\n", path);
-				printf("--------%s\n", ext);
 
 				FILE *f = fopen(path, "r");
 				memset(httpResponse, (char)0, RESPONSE_LEN);
 
 				if (f) {
-					// server could find file
-
-					// enum response_types ftype;
-					char *type;
+					// server found the file
 					char *target;
 					
 					target = httpResponse;
 					target += sprintf(target, "%s", "HTTP/1.1 200 OK\r\n");
 
+					// well...
 					if (!strcmp(ext, ".html")) {
-						type = "text/html";
-					}
-					else if (!strcmp(ext, ".js")) {
-						type = "text/javascript";
+						target += sprintf(target, "Content-Type: text/html\r\n");
 					}
 
-					target += sprintf(target, "Content-Type: %s\r\n", type);
 					target += sprintf(target, "Content-Security-Policy: %s\r\n\r\n", "script-src 'self'");
-
-					// target += sprintf(target, "Content-Length: %i\r\n\r\n", filesize(f));
 
 					char line[100];
 					while (fgets(line, 100, f)) {
@@ -184,7 +178,6 @@ int main(int argc , char *argv[]) {
 					// file not found
 					strcat(httpResponse, "HTTP/1.1 404 Not Found\r\n");
 					strcat(httpResponse, "Content-Type: text/plain\r\n\r\n");
-					
 					strcat(httpResponse, "404 not found\r\nfile:");
 					strcat(httpResponse, path);	
 				}

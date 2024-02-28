@@ -13,6 +13,10 @@ obj/%.o: %.c
 run: all
 	build/server
 
+clean:
+	rm build/server
+
+
 copy: all
 	cp build/server /c/path
 

@@ -1,11 +1,11 @@
 /*
-		compile:
-				clang main.c -o main -lws2_32 -liphlpapi
+	compile:
+		clang main.c -o main -lws2_32 -liphlpapi
 
 */
 
-
 /*
+	get available ipv4 addresses
 
 */
 
@@ -54,10 +54,11 @@ int main()
 	}
 	// Make a second call to GetIpAddrTable to get the
 	// actual data we want
-	if ((dwRetVal = GetIpAddrTable( pIPAddrTable, &dwSize, 0 )) != NO_ERROR ) { 
+	if ((dwRetVal = GetIpAddrTable(pIPAddrTable, &dwSize, 0)) != NO_ERROR) { 
 		printf("GetIpAddrTable failed with error %lu\n", dwRetVal);
 		if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwRetVal, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),       // Default language
-			(LPTSTR) & lpMsgBuf, 0, NULL)) {
+			(LPTSTR) & lpMsgBuf, 0, NULL)) 
+			{
 				printf("\tError: %s", lpMsgBuf);
 				LocalFree(lpMsgBuf);
 			}
@@ -66,16 +67,16 @@ int main()
 
 	printf("\tNum Entries: %ld\n", pIPAddrTable->dwNumEntries);
 
-	for (i=0; i < (int) pIPAddrTable->dwNumEntries; i++) {
-			printf("\n\tInterface Index[%d]:\t%ld\n", i, pIPAddrTable->table[i].dwIndex);
-			IPAddr.S_un.S_addr = (u_long) pIPAddrTable->table[i].dwAddr;
-			printf("\tIP Address[%d]:     \t%s\n", i, inet_ntoa(IPAddr) );
-			IPAddr.S_un.S_addr = (u_long) pIPAddrTable->table[i].dwMask;
-			printf("\tSubnet Mask[%d]:    \t%s\n", i, inet_ntoa(IPAddr) );
-			IPAddr.S_un.S_addr = (u_long) pIPAddrTable->table[i].dwBCastAddr;
-			printf("\tBroadCast[%d]:      \t%s (%ld%)\n", i, inet_ntoa(IPAddr), pIPAddrTable->table[i].dwBCastAddr);
-			printf("\tReassembly size[%d]:\t%ld\n", i, pIPAddrTable->table[i].dwReasmSize);
-			printf("\tType and State[%d]:", i);
+	for (i = 0; i < (int)pIPAddrTable->dwNumEntries; i++) {
+		printf("\n\tInterface Index[%d]:\t%ld\n", i, pIPAddrTable->table[i].dwIndex);
+		IPAddr.S_un.S_addr = (u_long) pIPAddrTable->table[i].dwAddr;
+		printf("\tIP Address[%d]:     \t%s\n", i, inet_ntoa(IPAddr));
+		IPAddr.S_un.S_addr = (u_long) pIPAddrTable->table[i].dwMask;
+		printf("\tSubnet Mask[%d]:    \t%s\n", i, inet_ntoa(IPAddr));
+		IPAddr.S_un.S_addr = (u_long) pIPAddrTable->table[i].dwBCastAddr;
+		printf("\tBroadCast[%d]:      \t%s (%ld%)\n", i, inet_ntoa(IPAddr), pIPAddrTable->table[i].dwBCastAddr);
+		printf("\tReassembly size[%d]:\t%ld\n", i, pIPAddrTable->table[i].dwReasmSize);
+		printf("\tType and State[%d]:", i);
 
 		if (pIPAddrTable->table[i].wType & MIB_IPADDR_PRIMARY)
 			printf("\tPrimary IP Address");
